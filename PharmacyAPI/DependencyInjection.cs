@@ -5,6 +5,7 @@ using PharmacyAPI.Models;
 using PharmacyAPI.Repositories;
 using PharmacyAPI.Utils;
 using PharmacyAPI.Utils.DbInitializer;
+using PharmacyAPI.JwtFeatures;
 
 namespace PharmacyAPI
 {
@@ -30,6 +31,7 @@ namespace PharmacyAPI
             services.AddScoped<IRepository<Chat>, Repository<Chat>>();
             services.AddScoped<IRepository<ChatMessage>, Repository<ChatMessage>>();
             services.AddScoped<IRepository<ApplicationUserOtp>, Repository<ApplicationUserOtp>>();
+            services.AddScoped<IJwtHandler, JwtHandler>();
             services.AddScoped<IChatService, ChatService>();
         }
     }

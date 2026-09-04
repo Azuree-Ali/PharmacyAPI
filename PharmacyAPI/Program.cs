@@ -1,10 +1,13 @@
-﻿using Microsoft.AspNetCore.Authentication.Negotiate;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using PharmacyAPI.DataAccess;
 using PharmacyAPI.Models;
 using PharmacyAPI.Utils.DbInitializer;
 using Scalar.AspNetCore;
+using System.Text;
 
 namespace PharmacyAPI
 {
@@ -54,6 +57,25 @@ namespace PharmacyAPI
 
             // Custom Services
             builder.Services.ConfigureServices();
+
+            var jwtSettings = builder.Configuration.GetSection("JwtSettings");
+            builder.Services.AddAuthentication(opt => {
+                opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+             .AddJwtBearer(options =>
+             {
+                 options.TokenValidationParameters = new TokenValidationParameters
+                     {
+                          ValidateIssuer = true,
+                           ValidateAudience = true,
+                          ValidateLifetime = true,
+                           ValidateIssuerSigningKey = true,
+                            ValidIssuer = jwtSettings["ValidateIssuer"],
+                             ValidAudience = jwtSettings["ValidateAudience"],
+                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
+                     };
+             });
 
             var app = builder.Build();
 

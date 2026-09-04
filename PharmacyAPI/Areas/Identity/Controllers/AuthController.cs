@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.Web.CodeGenerators.Mvc.Templates.BlazorIdentity.Pages;
 using Pharmacy.DTOs.Request;
+using PharmacyAPI.JwtFeatures;
 using PharmacyAPI.Models;
 using PharmacyAPI.Repositories;
 using PharmacyAPI.Utils;
@@ -21,12 +22,14 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IRepository<ApplicationUserOtp> _applicationUserOtpRepository;
         private readonly IEmailSender _emailSender;
-        public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailSender emailSender, IRepository<ApplicationUserOtp> applicationUserOtpRepository)
+        private readonly IJwtHandler _jwtHandlerr;
+        public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IEmailSender emailSender, IRepository<ApplicationUserOtp> applicationUserOtpRepository, IJwtHandler jwtHandlerr)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
             _applicationUserOtpRepository = applicationUserOtpRepository;
+            _jwtHandlerr = jwtHandlerr;
         }
         [HttpPost("Register")]
         public async Task<IActionResult> Register(RegisterRequest registerRequest)
@@ -87,9 +90,11 @@ namespace PharmacyAPI.Areas.Identity.Controllers
                 }
                 return BadRequest(new ApiResponse<object> { IsSuccess = false, Message = "Invalid Data", Error = string.Join(", ", errors) });
             }
-            return Ok(new ApiResponse<object>() { IsSuccess = true, Message = "Login successful" });
+
+            var accessToken = await _jwtHandlerr.GenerateAccessTokenAsync(user);
+            return Ok(new AuthResponse() { AccessToken = accessToken });
         }
-        [HttpGet]
+        [HttpGet("ConfirmEmail")]
         public async Task<IActionResult> ConfirmEmail(string userId, string token)
         {
             var user = await _userManager.FindByIdAsync(userId);
