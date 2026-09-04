@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Pharmacy.DataAccess;
+using PharmacyAPI.DataAccess;
 using System.Linq.Expressions;
 
 namespace PharmacyAPI.Repositories

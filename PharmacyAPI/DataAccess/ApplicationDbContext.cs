@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using PharmacyAPI.Models;
 
-namespace Pharmacy.DataAccess
+namespace PharmacyAPI.DataAccess
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {

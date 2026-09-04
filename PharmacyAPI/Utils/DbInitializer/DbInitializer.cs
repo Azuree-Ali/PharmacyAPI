@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Pharmacy.DataAccess;
+using PharmacyAPI.DataAccess;
 using PharmacyAPI.Models;
 using PharmacyAPI.Utils;
 using PharmacyAPI.Utils.DbInitializer;
@@ -30,14 +30,39 @@ namespace PharmacyAPI.Utils.DbInitializer
                 {
                     _context.Database.Migrate();
                 }
-                if (!_roleManager.Roles.Any())
-                {
-                    await _roleManager.CreateAsync(new IdentityRole(CD.SUPER_ADMIN_ROLE));
-                    await _roleManager.CreateAsync(new IdentityRole(CD.ADMIN_ROLE));
-                    await _roleManager.CreateAsync(new IdentityRole(CD.PHARMACIST_ROLE));
-                    await _roleManager.CreateAsync(new IdentityRole(CD.CUSTOMER_ROLE));
 
-                    var user = new ApplicationUser()
+                // Roles
+                if (!await _roleManager.RoleExistsAsync(CD.SUPER_ADMIN_ROLE))
+                {
+                    await _roleManager.CreateAsync(
+                        new IdentityRole(CD.SUPER_ADMIN_ROLE));
+                }
+
+                if (!await _roleManager.RoleExistsAsync(CD.ADMIN_ROLE))
+                {
+                    await _roleManager.CreateAsync(
+                        new IdentityRole(CD.ADMIN_ROLE));
+                }
+
+                if (!await _roleManager.RoleExistsAsync(CD.PHARMACIST_ROLE))
+                {
+                    await _roleManager.CreateAsync(
+                        new IdentityRole(CD.PHARMACIST_ROLE));
+                }
+
+                if (!await _roleManager.RoleExistsAsync(CD.CUSTOMER_ROLE))
+                {
+                    await _roleManager.CreateAsync(
+                        new IdentityRole(CD.CUSTOMER_ROLE));
+                }
+
+                // Super Admin
+                var superAdmin = await _userManager.FindByEmailAsync(
+                    "superadmin@eraasoft.com");
+
+                if (superAdmin == null)
+                {
+                    superAdmin = new ApplicationUser()
                     {
                         FirstName = "Super",
                         LastName = "Admin",
@@ -46,15 +71,23 @@ namespace PharmacyAPI.Utils.DbInitializer
                         EmailConfirmed = true,
                     };
 
-                    await _userManager.CreateAsync(user, "SuperAdmin@123");
+                    var result = await _userManager.CreateAsync(
+                        superAdmin,
+                        "SuperAdmin@123");
 
-                    await _userManager.AddToRoleAsync(user, CD.SUPER_ADMIN_ROLE);
+                    if (result.Succeeded)
+                    {
+                        await _userManager.AddToRoleAsync(
+                            superAdmin,
+                            CD.SUPER_ADMIN_ROLE);
+                    }
                 }
             }
-            catch (Exception ex) {
-                _logger.LogError(ex.Message); 
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while initializing database.");
             }
-            
+
 
         }
     }

@@ -1,15 +1,16 @@
 ﻿using Microsoft.AspNetCore.Authentication.Negotiate;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Pharmacy.DataAccess;
+using PharmacyAPI.DataAccess;
 using PharmacyAPI.Models;
+using PharmacyAPI.Utils.DbInitializer;
 using Scalar.AspNetCore;
 
 namespace PharmacyAPI
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -51,7 +52,22 @@ namespace PharmacyAPI
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
+            // Custom Services
+            builder.Services.ConfigureServices();
+
             var app = builder.Build();
+
+            // =========================
+            // Database Initializer
+            // =========================
+
+            using (var scope = app.Services.CreateScope())
+            {
+                var dbInitializer = scope.ServiceProvider
+                    .GetRequiredService<IDbInitializer>();
+
+                await dbInitializer.InitializeAsync();
+            }
 
             // =========================
             // HTTP Request Pipeline
@@ -70,7 +86,7 @@ namespace PharmacyAPI
 
             app.MapControllers();
 
-            app.Run();
+            await app.RunAsync();
         }
     }
 }
