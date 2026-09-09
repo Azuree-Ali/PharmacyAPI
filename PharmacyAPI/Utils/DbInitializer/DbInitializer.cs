@@ -57,31 +57,39 @@ namespace PharmacyAPI.Utils.DbInitializer
                 }
 
                 // Super Admin
-                var superAdmin = await _userManager.FindByEmailAsync(
-                    "superadmin@eraasoft.com");
+                var superAdmin = await _userManager.FindByEmailAsync("superadmin@eraasoft.com");
 
                 if (superAdmin == null)
                 {
-                    superAdmin = new ApplicationUser()
+                    superAdmin = new ApplicationUser
                     {
                         FirstName = "Super",
                         LastName = "Admin",
                         UserName = "SuperAdmin",
                         Email = "superadmin@eraasoft.com",
-                        EmailConfirmed = true,
+                        EmailConfirmed = true
                     };
 
-                    var result = await _userManager.CreateAsync(
-                        superAdmin,
-                        "SuperAdmin@123");
+                    var result = await _userManager.CreateAsync(superAdmin, "YOUR_PASSWORD");
 
-                    if (result.Succeeded)
+                    if (!result.Succeeded)
                     {
-                        await _userManager.AddToRoleAsync(
-                            superAdmin,
-                            CD.SUPER_ADMIN_ROLE);
+                        throw new Exception(
+                            string.Join(", ", result.Errors.Select(e => e.Description))
+                        );
                     }
                 }
+
+                // مهم جدًا: حتى لو المستخدم موجود بالفعل
+                if (!await _userManager.IsInRoleAsync(
+                        superAdmin,
+                        CD.SUPER_ADMIN_ROLE))
+                {
+                    await _userManager.AddToRoleAsync(
+                        superAdmin,
+                        CD.SUPER_ADMIN_ROLE);
+                }
+            
             }
             catch (Exception ex)
             {

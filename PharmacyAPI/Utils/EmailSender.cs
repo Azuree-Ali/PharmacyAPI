@@ -6,25 +6,39 @@ namespace PharmacyAPI.Utils
 {
     public class EmailSender : IEmailSender
     {
-        public Task SendEmailAsync(string email, string subject, string htmlMessage)
+        private readonly IConfiguration _configuration;
+
+        public EmailSender(IConfiguration configuration)
         {
-            var client = new SmtpClient("smtp.gmail.com", 587)
+            _configuration = configuration;
+        }
+
+        public async Task SendEmailAsync(
+            string email,
+            string subject,
+            string htmlMessage)
+        {
+            using var client = new SmtpClient("smtp.gmail.com", 587)
             {
                 EnableSsl = true,
                 UseDefaultCredentials = false,
-                Credentials = new NetworkCredential("a.prins2004@gmail.com", "dusd mexn vlpx lffw")
+                Credentials = new NetworkCredential(
+                    _configuration["EmailSettings:Email"],
+                    _configuration["EmailSettings:Password"])
             };
 
-            var mail = new MailMessage(from: "a.prins2004@gmail.com",
-                                to: email,
-                                subject,
-                                htmlMessage
-                                )
+            using var mail = new MailMessage
             {
+                From = new MailAddress(
+                    _configuration["EmailSettings:Email"]!),
+                Subject = subject,
+                Body = htmlMessage,
                 IsBodyHtml = true
-            }; 
-            return client.SendMailAsync(mail);
+            };
+
+            mail.To.Add(email);
+
+            await client.SendMailAsync(mail);
         }
     }
-    
 }

@@ -23,18 +23,8 @@ namespace PharmacyAPI
 
             builder.Services.AddControllers();
 
-            // OpenAPI
             builder.Services.AddOpenApi();
 
-            // Authentication
-            builder.Services
-                .AddAuthentication(NegotiateDefaults.AuthenticationScheme)
-                .AddNegotiate();
-
-            // Authorization
-            builder.Services.AddAuthorization();
-
-            // Database
             var connectionString =
                 builder.Configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException(
@@ -45,7 +35,6 @@ namespace PharmacyAPI
                 options.UseSqlServer(connectionString);
             });
 
-            // Identity
             builder.Services
                 .AddIdentity<ApplicationUser, IdentityRole>(options =>
                 {
@@ -54,28 +43,38 @@ namespace PharmacyAPI
                 })
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
-
-            // Custom Services
-            builder.Services.ConfigureServices();
-
             var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-            builder.Services.AddAuthentication(opt => {
-                opt.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                opt.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
-             .AddJwtBearer(options =>
-             {
-                 options.TokenValidationParameters = new TokenValidationParameters
-                     {
-                          ValidateIssuer = true,
-                           ValidateAudience = true,
-                          ValidateLifetime = true,
-                           ValidateIssuerSigningKey = true,
-                            ValidIssuer = jwtSettings["ValidateIssuer"],
-                             ValidAudience = jwtSettings["ValidateAudience"],
-                            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]))
-                     };
-             });
+
+            builder.Services
+                .AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme =
+                        JwtBearerDefaults.AuthenticationScheme;
+
+                    options.DefaultChallengeScheme =
+                        JwtBearerDefaults.AuthenticationScheme;
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+
+                        ValidIssuer = jwtSettings["ValidIssuer"],
+                        ValidAudience = jwtSettings["ValidAudience"],
+
+                        IssuerSigningKey = new SymmetricSecurityKey(
+                            Encoding.UTF8.GetBytes(
+                                jwtSettings["SecretKey"]!))
+                    };
+                });
+
+            builder.Services.AddAuthorization();
+
+            builder.Services.ConfigureServices();
 
             var app = builder.Build();
 

@@ -53,10 +53,23 @@ namespace PharmacyAPI.Areas.Identity.Controllers
             var link = Url.Action(nameof(ConfirmEmail), "Account", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
 
             await _emailSender.SendEmailAsync(
-                registerRequest.Email,
-                "Ecommerce confirm Email",
-                $"<h1>Please click <a href={link}>here</a> to Confirm Your Mail</h1>"
-                );
+     user.Email!,
+     "Confirm Email",
+     $"""
+    <h2>Confirm your email</h2>
+    <p>Please click the button below to confirm your email:</p>
+
+    <a href="{link}"
+       style="display:inline-block;
+              padding:10px 20px;
+              background-color:#007bff;
+              color:white;
+              text-decoration:none;
+              border-radius:5px;">
+        Confirm Email
+    </a>
+    """
+ );
             return Ok(new ApiResponse<object>()
             {
                 IsSuccess = true,
@@ -92,6 +105,9 @@ namespace PharmacyAPI.Areas.Identity.Controllers
             }
 
             var accessToken = await _jwtHandlerr.GenerateAccessTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+            //Console.WriteLine("USER: " + user.UserName);
+            //Console.WriteLine("ROLES: " + string.Join(", ", roles));
             return Ok(new AuthResponse() { AccessToken = accessToken });
         }
         [HttpGet("ConfirmEmail")]
@@ -121,10 +137,10 @@ namespace PharmacyAPI.Areas.Identity.Controllers
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var link = Url.Action(nameof(ConfirmEmail), "Account", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
             await _emailSender.SendEmailAsync(
-                user.Email,
-                "Ecommerce confirm Email",
-                $"<h1>Please click <a href={link}>here</a> to Confirm Your Mail</h1>"
-                );
+     user.Email,
+     "Ecommerce Confirm Email",
+     $"<h1>Please click <a href=\"{link}\">here</a> to confirm your email</h1>"
+ );
             return Ok(new ApiResponse<object>() { IsSuccess = true, Message = "Email Confirmation Sent Successfully" });
         }
         [HttpPost("ForgetPassword")]
