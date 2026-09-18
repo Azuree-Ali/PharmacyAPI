@@ -70,7 +70,7 @@ namespace PharmacyAPI.Utils.DbInitializer
                         EmailConfirmed = true
                     };
 
-                    var result = await _userManager.CreateAsync(superAdmin, "YOUR_PASSWORD");
+                    var result = await _userManager.CreateAsync(superAdmin, "Super@123");
 
                     if (!result.Succeeded)
                     {
