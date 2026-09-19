@@ -27,11 +27,11 @@ namespace PharmacyAPI.Services
                         c.CustomerId == userId ||
                         c.AdminId == userId
                     ),
-               includes:
-[
-    c => c.Customer,
-    c => c.Messages
-],
+                includes:
+                [
+                    c => c.Customer,
+                    c => c.Messages
+                ],
                 IsTracking: false
             );
         }
@@ -43,6 +43,7 @@ namespace PharmacyAPI.Services
                 filter: c => c.CustomerId == customerId,
                 includes:
                 [
+                    c => c.Customer,
                     c => c.Messages
                 ],
                 IsTracking: false
@@ -56,13 +57,17 @@ namespace PharmacyAPI.Services
                 filter: c => c.CustomerId == customerId,
                 includes:
                 [
+                    c => c.Customer,
                     c => c.Messages
                 ],
                 IsTracking: false
             );
 
             return chats
-                .OrderByDescending(c => c.CreatedAt)
+                .OrderByDescending(c =>
+                    c.Messages
+                        .Select(m => (DateTime?)m.SentAt)
+                        .Max() ?? c.CreatedAt)
                 .ToList();
         }
 
@@ -76,22 +81,22 @@ namespace PharmacyAPI.Services
                 includes:
                 [
                     c => c.Customer,
-            c => c.Messages
+                    c => c.Messages
                 ],
                 IsTracking: false
             );
 
             return chats
-       .OrderByDescending(c =>
-           c.Messages
-               .Select(m => (DateTime?)m.SentAt)
-               .Max() ?? c.CreatedAt
-       )
-       .ToList();
+                .OrderByDescending(c =>
+                    c.Messages
+                        .Select(m => (DateTime?)m.SentAt)
+                        .Max() ?? c.CreatedAt)
+                .ToList();
         }
+
         public async Task<Chat?> GetAdminChatAsync(
-    int chatId,
-    string adminId)
+            int chatId,
+            string adminId)
         {
             return await _chatRepository.GetOneAsync(
                 filter: c =>
@@ -103,7 +108,7 @@ namespace PharmacyAPI.Services
                 includes:
                 [
                     c => c.Customer,
-            c => c.Messages
+                    c => c.Messages
                 ],
                 IsTracking: false
             );
@@ -130,7 +135,7 @@ namespace PharmacyAPI.Services
             {
                 CustomerId = customerId,
                 AdminId = adminId,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             await _chatRepository.CreateAsync(chat);
@@ -153,9 +158,9 @@ namespace PharmacyAPI.Services
         }
 
         public async Task<ChatMessage?> SendMessageAsync(
-        int chatId,
-        string senderId,
-        string message)
+            int chatId,
+            string senderId,
+            string message)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -177,8 +182,8 @@ namespace PharmacyAPI.Services
                 return null;
             }
 
-            // Assign the chat to the admin
-            // when the admin sends the first message.
+            // If an admin sends the first message,
+            // assign the chat to that admin.
             if (chat.AdminId == null &&
                 chat.CustomerId != senderId)
             {
@@ -192,7 +197,7 @@ namespace PharmacyAPI.Services
                 ChatId = chatId,
                 SenderId = senderId,
                 Message = message.Trim(),
-                SentAt = DateTime.Now,
+                SentAt = DateTime.UtcNow,
                 IsRead = false
             };
 
@@ -202,6 +207,7 @@ namespace PharmacyAPI.Services
 
             return chatMessage;
         }
+
         public async Task MarkMessagesAsReadAsync(
             int chatId,
             string userId)
@@ -230,10 +236,29 @@ namespace PharmacyAPI.Services
             foreach (var message in messages)
             {
                 message.IsRead = true;
+
                 _messageRepository.Update(message);
             }
 
             await _messageRepository.CommitAsync();
+        }
+        public async Task<Chat?> GetChatForUserAsync(
+    int chatId,
+    string userId,
+    bool isAdmin)
+        {
+            if (isAdmin)
+            {
+                return await GetAdminChatAsync(
+                    chatId,
+                    userId
+                );
+            }
+
+            return await GetChatAsync(
+                chatId,
+                userId
+            );
         }
     }
 }

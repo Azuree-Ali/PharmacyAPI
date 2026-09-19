@@ -108,15 +108,16 @@ namespace PharmacyAPI.Hubs
             }
 
             // Get the chat
-            var chat = await _chatService.GetChatAsync(
-                chatId,
-                userId
-            );
+            var chat = await _chatService.GetChatForUserAsync(
+     chatId,
+     userId,
+     IsAdmin()
+ );
 
             if (chat == null)
             {
                 throw new HubException(
-                    "Chat not found."
+                    "You are not allowed to access this chat."
                 );
             }
 
@@ -222,5 +223,15 @@ namespace PharmacyAPI.Hubs
         {
             return $"chat-{chatId}";
         }
+        private bool IsAdmin()
+        {
+            return
+                Context.User?.IsInRole(CD.SUPER_ADMIN_ROLE) == true
+                ||
+                Context.User?.IsInRole(CD.ADMIN_ROLE) == true
+                ||
+                Context.User?.IsInRole(CD.PHARMACIST_ROLE) == true;
+        }
+
     }
 }

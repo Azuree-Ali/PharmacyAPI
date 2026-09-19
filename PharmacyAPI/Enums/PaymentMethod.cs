@@ -4,6 +4,5 @@
     {
         Cash,
         CreditCard,
-        Wallet
     }
 }

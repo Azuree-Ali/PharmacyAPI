@@ -16,15 +16,20 @@ namespace PharmacyAPI.Services
 
         Task<List<Chat>> GetAdminChatsAsync(
             string adminId);
+
         Task<Chat?> GetAdminChatAsync(
-                int chatId,
-                    string adminId);
+            int chatId,
+            string adminId);
 
-
+        Task<Chat> GetOrCreateCustomerChatAsync(
+            string customerId);
 
         Task<Chat> CreateChatAsync(
             string customerId,
             string? adminId = null);
+
+        Task<List<ChatMessage>> GetMessagesAsync(
+            int chatId);
 
         Task<ChatMessage?> SendMessageAsync(
             int chatId,
@@ -34,9 +39,9 @@ namespace PharmacyAPI.Services
         Task MarkMessagesAsReadAsync(
             int chatId,
             string userId);
-        Task<Chat> GetOrCreateCustomerChatAsync(
-                        string customerId);
-        Task<List<ChatMessage>> GetMessagesAsync(
-                        int chatId);
+        Task<Chat?> GetChatForUserAsync(
+    int chatId,
+    string userId,
+    bool isAdmin);
     }
 }
