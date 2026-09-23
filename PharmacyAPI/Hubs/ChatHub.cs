@@ -12,12 +12,14 @@ namespace PharmacyAPI.Hubs
     {
         private readonly IChatService _chatService;
         private readonly INotificationService _notificationService;
+        private readonly IOrderWorkflowService _orderWorkflowService;
         UserManager<ApplicationUser> _userManager;
 
-        public ChatHub(IChatService chatService, INotificationService notificationService, UserManager<ApplicationUser> userManager)
+        public ChatHub(IChatService chatService, INotificationService notificationService, IOrderWorkflowService orderWorkflowService, UserManager<ApplicationUser> userManager)
         {
             _chatService = chatService;
             _notificationService = notificationService;
+            _orderWorkflowService = orderWorkflowService;
             this._userManager = userManager;
         }
 
@@ -32,10 +34,7 @@ namespace PharmacyAPI.Hubs
                 );
             }
 
-            var isAdmin =
-                Context.User?.IsInRole(
-                    CD.SUPER_ADMIN_ROLE
-                ) == true;
+            var isAdmin = IsAdmin();
 
             Chat? chat;
 
@@ -133,7 +132,10 @@ namespace PharmacyAPI.Hubs
                         senderId = chatMessage.SenderId,
                         message = chatMessage.Message,
                         sentAt = chatMessage.SentAt,
-                        isRead = chatMessage.IsRead
+                        isRead = chatMessage.IsRead,
+                        orderId = chatMessage.OrderId,
+                        actions = OrderWorkflowService.GetChatActions(
+                            chatMessage.OffersDeliveryActions ? chatMessage.OrderId : null)
                     }
                 );
 
@@ -188,8 +190,15 @@ namespace PharmacyAPI.Hubs
                     chatId
                 );
             }
+
+            if (chat.CustomerId == userId)
+            {
+                await _orderWorkflowService.HandleCustomerChatReplyAsync(
+                    chatId,
+                    userId,
+                    message);
+            }
         }
-        
 
         public async Task MarkAsRead(int chatId)
         {

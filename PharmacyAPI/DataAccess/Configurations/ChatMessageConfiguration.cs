@@ -31,6 +31,11 @@ namespace PharmacyAPI.DataAccess.Configurations
                 .HasForeignKey(m => m.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.HasOne(m => m.Order)
+                .WithMany()
+                .HasForeignKey(m => m.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             builder.HasIndex(m => m.ChatId);
 
             builder.HasIndex(m => new

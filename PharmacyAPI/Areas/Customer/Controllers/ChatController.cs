@@ -15,13 +15,16 @@ namespace PharmacyAPI.Controllers
     public class ChatController : ControllerBase
     {
         private readonly IChatService _chatService;
+        private readonly IOrderWorkflowService _orderWorkflowService;
         private readonly UserManager<ApplicationUser> _userManager;
 
         public ChatController(
             IChatService chatService,
+            IOrderWorkflowService orderWorkflowService,
             UserManager<ApplicationUser> userManager)
         {
             _chatService = chatService;
+            _orderWorkflowService = orderWorkflowService;
             _userManager = userManager;
         }
 
@@ -56,6 +59,8 @@ namespace PharmacyAPI.Controllers
                     {
                         Id = m.Id,
                         ChatId = m.ChatId,
+                        OrderId = m.OrderId,
+                        Actions = GetActions(m.OffersDeliveryActions ? m.OrderId : null),
                         SenderId = m.SenderId,
                         Message = m.Message,
                         SentAt = m.SentAt,
@@ -134,11 +139,18 @@ namespace PharmacyAPI.Controllers
             {
                 Id = message.Id,
                 ChatId = message.ChatId,
+                OrderId = message.OrderId,
+                Actions = GetActions(message.OffersDeliveryActions ? message.OrderId : null),
                 SenderId = message.SenderId,
                 Message = message.Message,
                 SentAt = message.SentAt,
                 IsRead = message.IsRead
             };
+
+            await _orderWorkflowService.HandleCustomerChatReplyAsync(
+                chatId,
+                userId,
+                request.Message);
 
             return Ok(new ApiResponse<ChatMessageResponse>
             {
@@ -147,5 +159,21 @@ namespace PharmacyAPI.Controllers
                 Data = response
             });
         }
+
+        private static List<ChatActionResponse> GetActions(int? orderId) => orderId.HasValue
+            ?
+            [
+                new ChatActionResponse
+                {
+                    Label = "Arrived",
+                    Href = $"/api/Customer/Orders/{orderId}/arrived"
+                },
+                new ChatActionResponse
+                {
+                    Label = "Cancel",
+                    Href = $"/api/Customer/Orders/{orderId}/cancel"
+                }
+            ]
+            : [];
     }
 }

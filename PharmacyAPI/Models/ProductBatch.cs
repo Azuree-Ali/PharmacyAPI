@@ -15,5 +15,7 @@ namespace PharmacyAPI.Models
         [Column(TypeName = "decimal(18,2)")]
         public decimal CostPrice { get; set; }
         public int QuantityOnHand { get; set; }
+        public ICollection<OrderItemBatchAllocation> OrderAllocations { get; set; }
+            = new List<OrderItemBatchAllocation>();
     }
 }

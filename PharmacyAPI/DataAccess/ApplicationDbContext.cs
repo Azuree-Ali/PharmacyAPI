@@ -26,6 +26,7 @@ namespace PharmacyAPI.DataAccess
         public DbSet<SalesInvoiceItem> SalesInvoiceItems { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<OrderItemBatchAllocation> OrderItemBatchAllocations { get; set; }
         public DbSet<ApplicationUserOtp> ApplicationUserOtps { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }

@@ -9,6 +9,10 @@ namespace PharmacyAPI.Models
         public int ChatId { get; set; }
         public Chat? Chat { get; set; }
 
+        public int? OrderId { get; set; }
+        public Order? Order { get; set; }
+        public bool OffersDeliveryActions { get; set; }
+
         // User who sent the message
         [Required]
         public string SenderId { get; set; } = string.Empty;

@@ -367,6 +367,12 @@ namespace PharmacyAPI.Migrations
                     b.Property<int>("ChatId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("OffersDeliveryActions")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsRead")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
@@ -387,6 +393,8 @@ namespace PharmacyAPI.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChatId");
+
+                    b.HasIndex("OrderId");
 
                     b.HasIndex("SenderId");
 
@@ -491,6 +499,12 @@ namespace PharmacyAPI.Migrations
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeliveryConfirmationRequestedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OrderNumber")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -542,6 +556,32 @@ namespace PharmacyAPI.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("OrderItems");
+                });
+
+            modelBuilder.Entity("PharmacyAPI.Models.OrderItemBatchAllocation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("OrderItemId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProductBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderItemId");
+
+                    b.HasIndex("ProductBatchId");
+
+                    b.ToTable("OrderItemBatchAllocations");
                 });
 
             modelBuilder.Entity("PharmacyAPI.Models.Product", b =>
@@ -799,6 +839,11 @@ namespace PharmacyAPI.Migrations
 
             modelBuilder.Entity("PharmacyAPI.Models.ChatMessage", b =>
                 {
+                    b.HasOne("PharmacyAPI.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("PharmacyAPI.Models.Chat", "Chat")
                         .WithMany("Messages")
                         .HasForeignKey("ChatId")
@@ -812,6 +857,8 @@ namespace PharmacyAPI.Migrations
                         .IsRequired();
 
                     b.Navigation("Chat");
+
+                    b.Navigation("Order");
 
                     b.Navigation("Sender");
                 });
@@ -861,6 +908,25 @@ namespace PharmacyAPI.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("PharmacyAPI.Models.OrderItemBatchAllocation", b =>
+                {
+                    b.HasOne("PharmacyAPI.Models.OrderItem", "OrderItem")
+                        .WithMany("BatchAllocations")
+                        .HasForeignKey("OrderItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("PharmacyAPI.Models.ProductBatch", "ProductBatch")
+                        .WithMany("OrderAllocations")
+                        .HasForeignKey("ProductBatchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("OrderItem");
+
+                    b.Navigation("ProductBatch");
                 });
 
             modelBuilder.Entity("PharmacyAPI.Models.Product", b =>
@@ -957,9 +1023,19 @@ namespace PharmacyAPI.Migrations
                     b.Navigation("OrderItems");
                 });
 
+            modelBuilder.Entity("PharmacyAPI.Models.OrderItem", b =>
+                {
+                    b.Navigation("BatchAllocations");
+                });
+
             modelBuilder.Entity("PharmacyAPI.Models.Product", b =>
                 {
                     b.Navigation("Batches");
+                });
+
+            modelBuilder.Entity("PharmacyAPI.Models.ProductBatch", b =>
+                {
+                    b.Navigation("OrderAllocations");
                 });
 
             modelBuilder.Entity("PharmacyAPI.Models.SalesInvoice", b =>

@@ -12,6 +12,8 @@ namespace PharmacyAPI.DTOs.Response
 
         public OrderStatus Status { get; set; }
 
+        public bool IsPaid { get; set; }
+
         public decimal TotalAmount { get; set; }
 
         public decimal Discount { get; set; }

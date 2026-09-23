@@ -91,6 +91,7 @@ namespace PharmacyAPI.Areas.Customer.Controllers
             OrderNumber = o.OrderNumber,
             OrderDate = o.OrderDate,
             Status = o.Status,
+            IsPaid = o.IsPaid,
             TotalAmount = o.TotalAmount,
             Discount = o.Discount,
             DeliveryFees = o.DeliveryFees,

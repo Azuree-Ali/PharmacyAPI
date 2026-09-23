@@ -13,6 +13,8 @@
             [Column(TypeName = "decimal(18,2)")]
             public decimal UnitPrice { get; set; }
             [Column(TypeName = "decimal(18,2)")]
-            public decimal TotalPrice { get; set; }
-        }
+        public decimal TotalPrice { get; set; }
+        public ICollection<OrderItemBatchAllocation> BatchAllocations { get; set; }
+            = new List<OrderItemBatchAllocation>();
     }
+}

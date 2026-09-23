@@ -46,6 +46,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                     OrderNumber = o.OrderNumber,
                     OrderDate = o.OrderDate,
                     Status = o.Status,
+                    IsPaid = o.IsPaid,
                     TotalAmount = o.TotalAmount,
                     Discount = o.Discount,
                     DeliveryFees = o.DeliveryFees,
@@ -91,6 +92,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 OrderNumber = order.OrderNumber,
                 OrderDate = order.OrderDate,
                 Status = order.Status,
+                IsPaid = order.IsPaid,
                 TotalAmount = order.TotalAmount,
                 Discount = order.Discount,
                 DeliveryFees = order.DeliveryFees,
@@ -203,6 +205,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 OrderNumber = order.OrderNumber,
                 OrderDate = order.OrderDate,
                 Status = order.Status,
+                IsPaid = order.IsPaid,
                 TotalAmount = order.TotalAmount,
                 Discount = order.Discount,
                 DeliveryFees = order.DeliveryFees,
@@ -246,6 +249,17 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 {
                     IsSuccess = false,
                     Message = "Order not found"
+                });
+            }
+
+            if (order.PaymentMethod == Enums.PaymentMethod.Cash
+                && !order.IsPaid
+                && request.Status is Enums.OrderStatus.Completed or Enums.OrderStatus.Cancelled)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Unpaid cash orders must be completed or cancelled through the customer delivery confirmation flow."
                 });
             }
 
@@ -377,6 +391,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 OrderNumber = order.OrderNumber,
                 OrderDate = order.OrderDate,
                 Status = order.Status,
+                IsPaid = order.IsPaid,
                 TotalAmount = order.TotalAmount,
                 Discount = order.Discount,
                 DeliveryFees = order.DeliveryFees,
@@ -423,6 +438,17 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 {
                     IsSuccess = false,
                     Message = "Order not found"
+                });
+            }
+
+            if (order.PaymentMethod == Enums.PaymentMethod.Cash
+                && order.Status == Enums.OrderStatus.Pending
+                && !order.IsPaid)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Cancel this cash order through the customer delivery flow before deleting it so reserved inventory can be restored."
                 });
             }
             // Delete order items

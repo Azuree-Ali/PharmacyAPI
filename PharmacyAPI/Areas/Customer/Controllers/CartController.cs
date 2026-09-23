@@ -9,7 +9,7 @@ using PharmacyAPI.Utils;
 
 namespace PharmacyAPI.Areas.Customer.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = CD.CUSTOMER_ROLE)]
     [Area(CD.CUSTOMER_AREA)]
     [Route("api/[area]/[controller]")]
     [ApiController]
@@ -63,6 +63,17 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 await _cartRepository.CommitAsync();
             }
 
+            var productIds = cart.CartItems
+                .Select(item => item.ProductId)
+                .Distinct()
+                .ToList();
+            var products = productIds.Count == 0
+                ? new Dictionary<int, Product>()
+                : (await _productRepository.GetAllAsync(
+                    filter: product => productIds.Contains(product.Id),
+                    IsTracking: false))
+                    .ToDictionary(product => product.Id);
+
             var response = new CartResponse
             {
                 Id = cart.Id,
@@ -70,7 +81,9 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 {
                     Id = item.Id,
                     ProductId = item.ProductId,
-                    ProductName = item.Product?.Name ?? string.Empty,
+                    ProductName = products.TryGetValue(item.ProductId, out var product)
+                        ? product.Name
+                        : string.Empty,
                     UnitPrice = item.UnitPrice,
                     Quantity = item.Quantity,
                     TotalPrice = item.TotalPrice

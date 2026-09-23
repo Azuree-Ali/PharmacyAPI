@@ -33,6 +33,8 @@ namespace PharmacyAPI
             services.AddScoped<IRepository<ApplicationUserOtp>, Repository<ApplicationUserOtp>>();
             services.AddScoped<IJwtHandler, JwtHandler>();
             services.AddScoped<IChatService, ChatService>();
+            services.AddScoped<IOrderWorkflowService, OrderWorkflowService>();
+            services.AddHostedService<DeliveryReminderWorker>();
         }
     }
 }

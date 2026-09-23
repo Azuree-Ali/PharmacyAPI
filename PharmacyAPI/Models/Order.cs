@@ -12,6 +12,8 @@ namespace PharmacyAPI.Models
         public string OrderNumber { get; set; } = string.Empty;
         public DateTime OrderDate { get; set; } = DateTime.Now;
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
+        public bool IsPaid { get; set; }
+        public DateTime? DeliveryConfirmationRequestedAt { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal TotalAmount { get; set; }
         [Column(TypeName = "decimal(18,2)")]

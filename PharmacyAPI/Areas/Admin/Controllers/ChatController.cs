@@ -122,6 +122,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                     {
                         Id = m.Id,
                         ChatId = m.ChatId,
+                        OrderId = m.OrderId,
                         SenderId = m.SenderId,
                         Message = m.Message,
                         SentAt = m.SentAt,

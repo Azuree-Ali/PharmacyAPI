@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PharmacyAPI.DataAccess;
 using PharmacyAPI.Models;
+using PharmacyAPI.Hubs;
 using PharmacyAPI.Utils.DbInitializer;
 using Scalar.AspNetCore;
 using System.Text;
@@ -106,6 +107,8 @@ namespace PharmacyAPI
             app.UseAuthorization();
 
             app.MapControllers();
+            app.MapHub<ChatHub>("/hubs/chat");
+            app.MapHub<NotificationHub>("/hubs/notifications");
 
             await app.RunAsync();
         }
