@@ -18,6 +18,8 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
+!PharmacyCustomerApp/android/app/src/debug/
+!PharmacyCustomerApp/android/app/src/debug/**
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/

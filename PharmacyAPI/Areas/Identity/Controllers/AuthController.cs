@@ -50,7 +50,7 @@ namespace PharmacyAPI.Areas.Identity.Controllers
             // Send Email 
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var link = Url.Action(nameof(ConfirmEmail), "Account", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
+            var link = Url.Action(nameof(ConfirmEmail), "Auth", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
 
             await _emailSender.SendEmailAsync(
      user.Email!,
@@ -135,7 +135,7 @@ namespace PharmacyAPI.Areas.Identity.Controllers
             }
             // Send Email 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var link = Url.Action(nameof(ConfirmEmail), "Account", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
+            var link = Url.Action(nameof(ConfirmEmail), "Auth", new { area = CD.IDENTITY_AREA, userId = user.Id, token = token }, Request.Scheme);
             await _emailSender.SendEmailAsync(
      user.Email,
      "Ecommerce Confirm Email",
