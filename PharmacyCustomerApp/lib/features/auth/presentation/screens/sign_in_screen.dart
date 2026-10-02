@@ -126,7 +126,17 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       ),
                     ],
                     const SizedBox(height: 22),
-                    Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PasswordRecoveryScreen())), child: const Text('Forgot password?'))),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const PasswordRecoveryScreen(),
+                          ),
+                        ),
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
                     FilledButton(
                       onPressed: _isSubmitting ? null : _submit,
                       child: Padding(
@@ -156,7 +166,44 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                       ),
                       child: const Text('Create an account'),
                     ),
-                    TextButton(onPressed: () async { final identity = _usernameController.text.trim(); if (identity.isEmpty) { setState(() => _errorMessage = 'Enter your username or email first.'); return; } try { ApiPayload.unwrap(await ref.read(apiClientProvider).post('/api/Identity/Auth/ResendEmailConfirmation', data: {'userNameOrEmail': identity})); if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Confirmation email sent.'))); } catch (error) { if (mounted) setState(() => _errorMessage = error is AppException ? error.message : error.toString()); } }, child: const Text('Resend confirmation email')),
+                    TextButton(
+                      onPressed: () async {
+                        final identity = _usernameController.text.trim();
+                        if (identity.isEmpty) {
+                          setState(
+                            () => _errorMessage =
+                                'Enter your username or email first.',
+                          );
+                          return;
+                        }
+                        try {
+                          ApiPayload.unwrap(
+                            await ref
+                                .read(apiClientProvider)
+                                .post(
+                                  '/api/Identity/Auth/ResendEmailConfirmation',
+                                  data: {'userNameOrEmail': identity},
+                                ),
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Confirmation email sent.'),
+                              ),
+                            );
+                          }
+                        } catch (error) {
+                          if (mounted) {
+                            setState(
+                              () => _errorMessage = error is AppException
+                                  ? error.message
+                                  : error.toString(),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Resend confirmation email'),
+                    ),
                   ],
                 ),
               ),

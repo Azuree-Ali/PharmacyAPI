@@ -4,7 +4,9 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_payload.dart';
 import '../../core/providers.dart';
 
-final accountApiProvider = Provider<AccountApi>((ref) => AccountApi(ref.watch(apiClientProvider)));
+final accountApiProvider = Provider<AccountApi>(
+  (ref) => AccountApi(ref.watch(apiClientProvider)),
+);
 
 class AccountApi {
   const AccountApi(this._client);
@@ -14,33 +16,47 @@ class AccountApi {
     ApiPayload.unwrap(await _client.get('/api/Identity/Profile')),
   );
 
-  Future<void> updateProfile(Map<String, dynamic> value) async => ApiPayload.unwrap(
-    await _client.put('/api/Identity/Profile/update', data: value),
-  );
+  Future<void> updateProfile(Map<String, dynamic> value) async =>
+      ApiPayload.unwrap(
+        await _client.put('/api/Identity/Profile/update', data: value),
+      );
 
-  Future<void> updatePassword(String current, String next) async => ApiPayload.unwrap(
-    await _client.put('/api/Identity/Profile/update-password', data: {
-      'currentPassword': current,
-      'newPassword': next,
-    }),
-  );
+  Future<void> updatePassword(String current, String next) async =>
+      ApiPayload.unwrap(
+        await _client.put(
+          '/api/Identity/Profile/update-password',
+          data: {'currentPassword': current, 'newPassword': next},
+        ),
+      );
 
   Future<List<Map<String, dynamic>>> notifications() async => ApiPayload.asList(
     ApiPayload.unwrap(await _client.get('/api/Customer/Notifications')),
   ).map((item) => ApiPayload.asMap(item)).toList();
 
   Future<void> notificationAction(String path, {bool delete = false}) async =>
-      ApiPayload.unwrap(delete ? await _client.delete(path) : await _client.put(path));
+      ApiPayload.unwrap(
+        delete ? await _client.delete(path) : await _client.put(path),
+      );
 
   Future<Map<String, dynamic>> chat() async => ApiPayload.asMap(
     ApiPayload.unwrap(await _client.get('/api/Customer/Chat')),
   );
 
-  Future<void> sendMessage(int chatId, String message) async => ApiPayload.unwrap(
-    await _client.post('/api/Customer/Chat/$chatId/messages', data: {'message': message}),
-  );
+  Future<void> sendMessage(int chatId, String message) async =>
+      ApiPayload.unwrap(
+        await _client.post(
+          '/api/Customer/Chat/$chatId/messages',
+          data: {'message': message},
+        ),
+      );
 }
 
-final profileProvider = FutureProvider<Map<String, dynamic>>((ref) => ref.watch(accountApiProvider).profile());
-final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) => ref.watch(accountApiProvider).notifications());
-final supportChatProvider = FutureProvider<Map<String, dynamic>>((ref) => ref.watch(accountApiProvider).chat());
+final profileProvider = FutureProvider<Map<String, dynamic>>(
+  (ref) => ref.watch(accountApiProvider).profile(),
+);
+final notificationsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) => ref.watch(accountApiProvider).notifications(),
+);
+final supportChatProvider = FutureProvider<Map<String, dynamic>>(
+  (ref) => ref.watch(accountApiProvider).chat(),
+);

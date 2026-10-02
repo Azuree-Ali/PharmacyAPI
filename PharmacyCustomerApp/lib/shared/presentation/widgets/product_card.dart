@@ -26,13 +26,28 @@ class ProductCard extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [colors.primaryContainer.withValues(alpha: .8), const Color(0xFFF6FAF8)],
+                        colors: [
+                          colors.primaryContainer.withValues(alpha: .8),
+                          const Color(0xFFF6FAF8),
+                        ],
                       ),
                     ),
-                    child: Icon(Icons.medication_outlined, size: 48, color: colors.primary.withValues(alpha: .8)),
+                    child: Icon(
+                      Icons.medication_outlined,
+                      size: 48,
+                      color: colors.primary.withValues(alpha: .8),
+                    ),
                   ),
                   if (product.requiresPrescription)
-                    const Positioned(top: 9, left: 9, child: Chip(visualDensity: VisualDensity.compact, label: Text('Rx'), padding: EdgeInsets.zero)),
+                    const Positioned(
+                      top: 9,
+                      left: 9,
+                      child: Chip(
+                        visualDensity: VisualDensity.compact,
+                        label: Text('Rx'),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
                 ],
               ),
             ),
