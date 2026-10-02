@@ -45,7 +45,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
         }
 
         [HttpPost]
-        [Authorize(Roles = $" {CD.SUPER_ADMIN_ROLE},{CD.ADMIN_ROLE}")]
+        [Authorize(Roles = $"{CD.SUPER_ADMIN_ROLE},{CD.ADMIN_ROLE}")]
 
         public async Task<IActionResult> Create(CreateCategoryRequest createCategoryRequest)
         {
@@ -60,7 +60,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
 
 
         [HttpPut("{id}")]
-        [Authorize(Roles = $" {CD.SUPER_ADMIN_ROLE}")]
+        [Authorize(Roles = $"{CD.SUPER_ADMIN_ROLE}")]
 
         public async Task<IActionResult> Edit(int id, CreateCategoryRequest createCategoryRequest)
         {
@@ -80,7 +80,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = $" {CD.SUPER_ADMIN_ROLE}")]
+        [Authorize(Roles = $"{CD.SUPER_ADMIN_ROLE}")]
         public async Task<IActionResult> Delete(int id)
         {
             var category = await _categoryRepository.GetOneAsync(filter: c => c.Id == id);
