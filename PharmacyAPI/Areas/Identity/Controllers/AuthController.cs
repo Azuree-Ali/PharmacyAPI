@@ -168,7 +168,10 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         [HttpPost("VerifyOTP")]
         public async Task<IActionResult> VerifyOTP(VerifyOTPRequest verifyOTPRequest)
         {
-            var user = await _userManager.FindByIdAsync(verifyOTPRequest.UserId);
+            var user = !string.IsNullOrWhiteSpace(verifyOTPRequest.UserId)
+                ? await _userManager.FindByIdAsync(verifyOTPRequest.UserId)
+                : await _userManager.FindByEmailAsync(verifyOTPRequest.UserNameOrEmail ?? string.Empty)
+                    ?? await _userManager.FindByNameAsync(verifyOTPRequest.UserNameOrEmail ?? string.Empty);
             if (user is null)
             {
                 return NotFound(new ApiResponse<object>() { IsSuccess = false, Message = "Invalid User" });
