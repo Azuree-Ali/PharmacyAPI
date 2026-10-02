@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'account_api.dart';
+import '../orders/presentation/providers/orders_providers.dart';
+import '../orders/presentation/screens/order_details_screen.dart';
 
 dynamic _field(Map<String, dynamic> data, String name) =>
     data[name] ?? data[name[0].toUpperCase() + name.substring(1)];
@@ -242,14 +244,25 @@ class NotificationsScreen extends ConsumerWidget {
                           title: Text('${_field(item, 'message') ?? ''}'),
                           subtitle: Text('${_field(item, 'createdAt') ?? ''}'),
                           onTap: () async {
-                            if (id == null || read) return;
                             try {
-                              await ref
-                                  .read(accountApiProvider)
-                                  .notificationAction(
-                                    '/api/Customer/Notifications/$id/read',
-                                  );
+                              if (id != null && !read) {
+                                await ref
+                                    .read(accountApiProvider)
+                                    .notificationAction(
+                                      '/api/Customer/Notifications/$id/read',
+                                    );
+                              }
                               ref.invalidate(notificationsProvider);
+                              final orderId = (_field(item, 'orderId') as num?)
+                                  ?.toInt();
+                              if (orderId != null && context.mounted) {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        OrderDetailsScreen(orderId: orderId),
+                                  ),
+                                );
+                              }
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -341,6 +354,14 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                           itemCount: messages.length,
                           itemBuilder: (context, i) {
                             final msg = messages[i];
+                            final actions =
+                                (_field(msg, 'actions') as List? ?? const [])
+                                    .whereType<Map>()
+                                    .map(
+                                      (action) =>
+                                          Map<String, dynamic>.from(action),
+                                    )
+                                    .toList();
                             return Align(
                               alignment: Alignment.centerLeft,
                               child: Container(
@@ -355,7 +376,44 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
                                   ).colorScheme.primaryContainer,
                                   borderRadius: BorderRadius.circular(16),
                                 ),
-                                child: Text('${_field(msg, 'message') ?? ''}'),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('${_field(msg, 'message') ?? ''}'),
+                                    if (actions.isNotEmpty) ...[
+                                      const SizedBox(height: 10),
+                                      Wrap(
+                                        spacing: 8,
+                                        runSpacing: 8,
+                                        children: actions.map((action) {
+                                          final label =
+                                              '${_field(action, 'label') ?? 'Order action'}';
+                                          final cancel =
+                                              label.toLowerCase() == 'cancel';
+                                          return OutlinedButton.icon(
+                                            onPressed: () =>
+                                                _performDeliveryAction(
+                                                  context,
+                                                  action,
+                                                  cancel: cancel,
+                                                ),
+                                            icon: Icon(
+                                              cancel
+                                                  ? Icons.cancel_outlined
+                                                  : Icons.check_circle_outline,
+                                            ),
+                                            label: Text(
+                                              cancel
+                                                  ? 'Cancel order'
+                                                  : 'Confirm arrival',
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
                               ),
                             );
                           },
@@ -416,6 +474,60 @@ class _SupportChatScreenState extends ConsumerState<SupportChatScreen> {
           },
         ),
   );
+
+  Future<void> _performDeliveryAction(
+    BuildContext context,
+    Map<String, dynamic> action, {
+    required bool cancel,
+  }) async {
+    final orderId = _field(action, 'href');
+    if (orderId is! String) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(cancel ? 'Cancel this order?' : 'Confirm delivery?'),
+        content: Text(
+          cancel
+              ? 'This will cancel the order and restore its reserved stock.'
+              : 'Confirm that the order arrived. It will be marked complete and paid.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Keep order'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(cancel ? 'Cancel order' : 'Confirm arrival'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref
+          .read(accountApiProvider)
+          .performDeliveryAction(
+            method: '${_field(action, 'method') ?? 'POST'}',
+            href: orderId,
+          );
+      ref.invalidate(supportChatProvider);
+      ref.invalidate(ordersProvider);
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(cancel ? 'Order cancelled.' : 'Delivery confirmed.'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
 }
 
 Widget _retry(String message, VoidCallback retry) => Center(

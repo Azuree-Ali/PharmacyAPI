@@ -49,6 +49,19 @@ class AccountApi {
           data: {'message': message},
         ),
       );
+
+  Future<void> performDeliveryAction({
+    required String method,
+    required String href,
+  }) async {
+    final action = RegExp(
+      r'^/api/Customer/Orders/\d+/(arrived|cancel)$',
+    ).firstMatch(href);
+    if (method.toUpperCase() != 'POST' || action == null) {
+      throw const FormatException('Unsupported delivery action.');
+    }
+    ApiPayload.unwrap(await _client.post(href));
+  }
 }
 
 final profileProvider = FutureProvider<Map<String, dynamic>>(
