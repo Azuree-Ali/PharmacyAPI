@@ -46,7 +46,7 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 });
             }
 
-            var categories = await _categoryRepository.GetAllAsync();
+            var categories = await _categoryRepository.GetAllAsync() ?? [];
 
             var products = await _productRepository.GetAllAsync(
                 includes:
@@ -69,7 +69,7 @@ namespace PharmacyAPI.Areas.Customer.Controllers
     })
     .ToList(),
 
-                Products = products
+                Products = (products ?? [])
         .Select(p => new ProductResponse
         {
             Id = p.Id,
@@ -78,7 +78,8 @@ namespace PharmacyAPI.Areas.Customer.Controllers
             Price = p.Price,
             MinStockLevel = p.MinStockLevel,
             RequiresPrescription = p.RequiresPrescription,
-            CategoryId = p.CategoryId
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category?.Name
         })
         .ToList(),
 
