@@ -20,8 +20,9 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final isLogin = options.path.toLowerCase().endsWith('/auth/login');
-          final token = isLogin ? null : await _tokenStorage.read();
+          final path = options.path.toLowerCase();
+          final isPublicAuth = path.contains('/auth/');
+          final token = isPublicAuth ? null : await _tokenStorage.read();
           if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
@@ -69,10 +70,20 @@ class ApiClient {
   AppException _toAppException(DioException error) {
     final body = error.response?.data;
     if (body is Map) {
-      final message =
-          body['error'] ?? body['Error'] ?? body['message'] ?? body['Message'];
+      final message = body['error'] ?? body['Error'] ?? body['message'] ?? body['Message'];
       if (message is String && message.isNotEmpty) {
         return AppException(message, statusCode: error.response?.statusCode);
+      }
+      final errors = body['errors'] ?? body['Errors'];
+      if (errors is Map) {
+        final validation = errors.values
+            .expand((value) => value is List ? value : [value])
+            .whereType<String>()
+            .where((value) => value.isNotEmpty)
+            .join('\n');
+        if (validation.isNotEmpty) {
+          return AppException(validation, statusCode: error.response?.statusCode);
+        }
       }
     }
 

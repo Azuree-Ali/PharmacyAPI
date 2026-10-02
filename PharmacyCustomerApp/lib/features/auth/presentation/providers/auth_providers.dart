@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/providers.dart';
@@ -23,6 +25,24 @@ final registerCustomerProvider = Provider<RegisterCustomer>(
 );
 
 final sessionProvider = FutureProvider<bool>((ref) async {
-  final token = await ref.watch(tokenStorageProvider).read();
-  return token != null && token.isNotEmpty;
+  final storage = ref.watch(tokenStorageProvider);
+  final token = await storage.read();
+  if (token == null || token.isEmpty) return false;
+
+  try {
+    final payload = token.split('.')[1];
+    final claims = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(payload))))
+        as Map<String, dynamic>;
+    final role = claims['role'] ??
+        claims['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'];
+    final roles = role is List ? role : [role];
+    if (roles.contains('Customer')) return true;
+  } on FormatException {
+    // An unreadable saved token cannot be used to enter the customer area.
+  } on TypeError {
+    // A malformed token payload is treated as an expired customer session.
+  }
+
+  await storage.clear();
+  return false;
 });

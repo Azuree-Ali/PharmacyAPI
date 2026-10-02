@@ -6,6 +6,7 @@ import '../../features/catalog/presentation/screens/catalog_screen.dart';
 import '../../features/catalog/presentation/screens/home_screen.dart';
 import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/auth/presentation/providers/auth_providers.dart';
+import '../../features/account/account_screens.dart';
 
 class CustomerShell extends ConsumerStatefulWidget {
   const CustomerShell({super.key});
@@ -87,25 +88,41 @@ class _AccountScreen extends StatelessWidget {
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 20),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(Icons.person_outline),
-            title: Text('Profile'),
-            subtitle: Text('Profile editing will be added next.'),
+            leading: const Icon(Icons.person_outline),
+            title: const Text('Profile'),
+            subtitle: const Text('Personal details and password'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ProfileScreen()),
+            ),
           ),
         ),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(Icons.notifications_none),
-            title: Text('Notifications'),
-            subtitle: Text('Order updates and messages will appear here.'),
+            leading: const Icon(Icons.notifications_none),
+            title: const Text('Notifications'),
+            subtitle: const Text('Order updates and messages'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const NotificationsScreen(),
+              ),
+            ),
           ),
         ),
-        const Card(
+        Card(
           child: ListTile(
-            leading: Icon(Icons.support_agent),
-            title: Text('Support'),
-            subtitle: Text('Customer support chat will be added next.'),
+            leading: const Icon(Icons.support_agent),
+            title: const Text('Support'),
+            subtitle: const Text('Contact the pharmacy team'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const SupportChatScreen(),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 12),

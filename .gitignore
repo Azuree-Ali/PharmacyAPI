@@ -287,6 +287,12 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 
+# Local Admin Web build output and package-manager cache
+PharmacyAdminWeb/dist/
+PharmacyAdminWeb/*.log
+PharmacyAPI/.pnpm-store/
+PharmacyAPI/verify-build/
+
 # Visual Studio 6 build log
 *.plg
 

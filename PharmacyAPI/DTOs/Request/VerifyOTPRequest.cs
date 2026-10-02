@@ -3,6 +3,7 @@
     public class VerifyOTPRequest
     {
         public string OTP { get; set; }
-        public string UserId { get; set; }
+        public string? UserId { get; set; }
+        public string? UserNameOrEmail { get; set; }
     }
 }

@@ -78,6 +78,13 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         }
         [HttpPost("Login")]
         public async Task<IActionResult> Login(LoginRequest loginRequest)
+            => await LoginAsync(loginRequest, customerOnly: false);
+
+        [HttpPost("CustomerLogin")]
+        public async Task<IActionResult> CustomerLogin(LoginRequest loginRequest)
+            => await LoginAsync(loginRequest, customerOnly: true);
+
+        private async Task<IActionResult> LoginAsync(LoginRequest loginRequest, bool customerOnly)
         {
             var user = await _userManager.FindByEmailAsync(loginRequest.UsernameOrEmail) ??
                         await _userManager.FindByNameAsync(loginRequest.UsernameOrEmail);
@@ -102,6 +109,12 @@ namespace PharmacyAPI.Areas.Identity.Controllers
                     errors.Add("Invalid UserName or Password");
                 }
                 return BadRequest(new ApiResponse<object> { IsSuccess = false, Message = "Invalid Data", Error = string.Join(", ", errors) });
+            }
+
+            if (customerOnly && !await _userManager.IsInRoleAsync(user, CD.CUSTOMER_ROLE))
+            {
+                await _signInManager.SignOutAsync();
+                return Forbid();
             }
 
             var accessToken = await _jwtHandlerr.GenerateAccessTokenAsync(user);
@@ -168,7 +181,10 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         [HttpPost("VerifyOTP")]
         public async Task<IActionResult> VerifyOTP(VerifyOTPRequest verifyOTPRequest)
         {
-            var user = await _userManager.FindByIdAsync(verifyOTPRequest.UserId);
+            var user = !string.IsNullOrWhiteSpace(verifyOTPRequest.UserId)
+                ? await _userManager.FindByIdAsync(verifyOTPRequest.UserId)
+                : await _userManager.FindByEmailAsync(verifyOTPRequest.UserNameOrEmail ?? string.Empty)
+                    ?? await _userManager.FindByNameAsync(verifyOTPRequest.UserNameOrEmail ?? string.Empty);
             if (user is null)
             {
                 return NotFound(new ApiResponse<object>() { IsSuccess = false, Message = "Invalid User" });

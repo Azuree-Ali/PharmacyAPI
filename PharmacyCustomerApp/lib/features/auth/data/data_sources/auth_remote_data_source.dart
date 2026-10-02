@@ -34,7 +34,7 @@ class AuthRemoteDataSource {
     required String password,
   }) async {
     final response = await _apiClient.post(
-      '/api/Identity/Auth/Login',
+      '/api/Identity/Auth/CustomerLogin',
       data: {
         'usernameOrEmail': usernameOrEmail,
         'password': password,

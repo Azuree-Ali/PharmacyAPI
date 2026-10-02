@@ -29,16 +29,7 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 IsTracking: false
             );
 
-            if (products == null || !products.Any())
-            {
-                return NotFound(new ApiResponse<object>
-                {
-                    IsSuccess = false,
-                    Message = "No products found."
-                });
-            }
-
-            var response = products.Select(p => new ProductResponse
+            var response = (products ?? []).Select(p => new ProductResponse
             {
                 Id = p.Id,
                 Name = p.Name,
@@ -46,7 +37,8 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 Price = p.Price,
                 MinStockLevel = p.MinStockLevel,
                 RequiresPrescription = p.RequiresPrescription,
-                CategoryId = p.CategoryId
+                CategoryId = p.CategoryId,
+                CategoryName = p.Category?.Name
             }).ToList();
 
             return Ok(new ApiResponse<List<ProductResponse>>
@@ -84,7 +76,8 @@ namespace PharmacyAPI.Areas.Customer.Controllers
                 Price = product.Price,
                 MinStockLevel = product.MinStockLevel,
                 RequiresPrescription = product.RequiresPrescription,
-                CategoryId = product.CategoryId
+                CategoryId = product.CategoryId,
+                CategoryName = product.Category?.Name
             };
 
             return Ok(new ApiResponse<ProductResponse>

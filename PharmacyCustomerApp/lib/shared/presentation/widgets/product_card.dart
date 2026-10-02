@@ -18,15 +18,37 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: Container(
-                width: double.infinity,
-                color: colors.primaryContainer.withValues(alpha: .45),
-                alignment: Alignment.center,
-                child: Icon(
-                  Icons.medication_outlined,
-                  size: 42,
-                  color: colors.primary,
-                ),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colors.primaryContainer.withValues(alpha: .8),
+                          const Color(0xFFF6FAF8),
+                        ],
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.medication_outlined,
+                      size: 48,
+                      color: colors.primary.withValues(alpha: .8),
+                    ),
+                  ),
+                  if (product.requiresPrescription)
+                    const Positioned(
+                      top: 9,
+                      left: 9,
+                      child: Chip(
+                        visualDensity: VisualDensity.compact,
+                        label: Text('Rx'),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                ],
               ),
             ),
             Padding(

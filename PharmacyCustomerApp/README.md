@@ -19,6 +19,7 @@ lib/
     catalog/             customer home, products, product details
     cart/                server-backed cart and cart actions
     orders/              cash checkout, order history, details/actions
+    account/             profile, notifications, and REST support chat
   shared/                customer navigation and reusable widgets
 ```
 
@@ -26,7 +27,7 @@ Riverpod provides dependency injection and async UI state. Dio sends REST reques
 
 ## Current app slice
 
-Register / sign in → home → product catalog → product details → cart → cash checkout → order list/details. Online payment, profile, notifications, and chat remain future slices.
+Register / sign in → home → product catalog → product details → cart → cash checkout → order list/details. Profile editing, password changes, notification management, and support chat use the existing REST API. Online payment remains unavailable because the API has no payment gateway contract.
 
 ## Flutter setup
 
@@ -53,4 +54,6 @@ Use an API host reachable from the target device or emulator, with HTTPS trusted
 
 ## Current API constraints
 
-The API requires a customer JWT for Home, Product, Cart, Orders, and Checkout routes. Checkout currently supports cash only. Product responses do not include an image URL, so the UI uses a neutral placeholder. Registration and resend-confirmation email links now target the API's `AuthController/ConfirmEmail` route.
+The API requires a customer JWT for Home, Product, Cart, Orders, Checkout, Notifications, and Chat routes. Checkout currently supports cash only. Product responses do not include an image URL, so the UI uses a neutral placeholder. Registration and resend-confirmation email links target `AuthController/ConfirmEmail`.
+
+Support messages are loaded and sent through REST. SignalR hubs exist in the API, but live subscriptions are not enabled in Flutter yet; refresh the conversation or notifications list to fetch new items.

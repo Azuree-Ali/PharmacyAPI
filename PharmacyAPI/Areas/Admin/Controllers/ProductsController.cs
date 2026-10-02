@@ -157,7 +157,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
             });
         }
         [HttpDelete]
-        [Authorize(Roles = $" {CD.SUPER_ADMIN_ROLE},{CD.ADMIN_ROLE}")]
+        [Authorize(Roles = $"{CD.SUPER_ADMIN_ROLE},{CD.ADMIN_ROLE}")]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
             var product = await _productrepository.GetOneAsync(filter: p => p.Id == id);
