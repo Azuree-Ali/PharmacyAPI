@@ -16,17 +16,20 @@ namespace PharmacyAPI.Services
         private readonly ApplicationDbContext _context;
         private readonly IHubContext<ChatHub> _chatHub;
         private readonly IHubContext<NotificationHub> _notificationHub;
+        private readonly INotificationService _notificationService;
         private readonly ILogger<OrderWorkflowService> _logger;
 
         public OrderWorkflowService(
             ApplicationDbContext context,
             IHubContext<ChatHub> chatHub,
             IHubContext<NotificationHub> notificationHub,
+            INotificationService notificationService,
             ILogger<OrderWorkflowService> logger)
         {
             _context = context;
             _chatHub = chatHub;
             _notificationHub = notificationHub;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
@@ -53,32 +56,7 @@ namespace PharmacyAPI.Services
                 throw new InvalidOperationException("Your cart is empty.");
             }
 
-            var lines = new List<CheckoutLine>();
-            foreach (var cartItem in cart.CartItems)
-            {
-                var product = await _context.Products
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(p => p.Id == cartItem.ProductId);
-
-                if (product == null)
-                {
-                    throw new InvalidOperationException($"Product with ID {cartItem.ProductId} was not found.");
-                }
-
-                var batches = await _context.ProductBatches
-                    .Where(b => b.ProductId == product.Id
-                        && b.QuantityOnHand > 0
-                        && b.ExpiryDate >= DateTime.UtcNow.Date)
-                    .OrderBy(b => b.ExpiryDate)
-                    .ToListAsync();
-
-                if (batches.Sum(b => b.QuantityOnHand) < cartItem.Quantity)
-                {
-                    throw new InvalidOperationException($"Insufficient stock for product '{product.Name}'.");
-                }
-
-                lines.Add(new CheckoutLine(cartItem, product, batches));
-            }
+            var lines = await PrepareCheckoutLinesAsync(cart.CartItems);
 
             var total = lines.Sum(line => line.CartItem.Quantity * line.Product.Price);
             var order = new Order
@@ -99,39 +77,181 @@ namespace PharmacyAPI.Services
 
             foreach (var line in lines)
             {
-                var orderItem = new OrderItem
-                {
-                    ProductId = line.Product.Id,
-                    Quantity = line.CartItem.Quantity,
-                    UnitPrice = line.Product.Price,
-                    TotalPrice = line.CartItem.Quantity * line.Product.Price
-                };
-
-                var quantityRemaining = line.CartItem.Quantity;
-                foreach (var batch in line.Batches)
-                {
-                    if (quantityRemaining == 0)
-                    {
-                        break;
-                    }
-
-                    var allocated = Math.Min(batch.QuantityOnHand, quantityRemaining);
-                    batch.QuantityOnHand -= allocated;
-                    quantityRemaining -= allocated;
-                    orderItem.BatchAllocations.Add(new OrderItemBatchAllocation
-                    {
-                        ProductBatchId = batch.Id,
-                        Quantity = allocated
-                    });
-                }
-
+                var orderItem = CreateAllocatedOrderItem(line);
                 order.OrderItems.Add(orderItem);
             }
 
             _context.Orders.Add(order);
             _context.CartItems.RemoveRange(cart.CartItems);
             await _context.SaveChangesAsync();
+            await _notificationService.CreateAsync(
+                customerId,
+                $"Your order {order.OrderNumber} was placed successfully.",
+                "OrderCreated",
+                order.Id);
             return order;
+        }
+
+        public Task<List<Order>> GetCustomerOrderHistoryAsync(string customerId) =>
+            _context.Orders
+                .AsNoTracking()
+                .Where(order => order.ApplicationUserId == customerId)
+                .OrderByDescending(order => order.OrderDate)
+                .ToListAsync();
+
+        public Task<Order?> GetCustomerOrderDetailsAsync(string customerId, int orderId) =>
+            _context.Orders
+                .AsNoTracking()
+                .Include(order => order.OrderItems)
+                    .ThenInclude(item => item.Product)
+                .FirstOrDefaultAsync(order => order.Id == orderId
+                    && order.ApplicationUserId == customerId);
+
+        public async Task<Order> CreateAdminOrderAsync(CreateOrderRequest request)
+        {
+            if (!request.PaymentMethod.HasValue
+                || !Enum.IsDefined(typeof(PaymentMethod), request.PaymentMethod.Value))
+            {
+                throw new InvalidOperationException("A valid payment method is required.");
+            }
+
+            if (request.PaymentMethod.Value != PaymentMethod.Cash)
+            {
+                throw new InvalidOperationException("Only cash orders are currently supported.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.ApplicationUserId)
+                || !await _context.Users.AnyAsync(user => user.Id == request.ApplicationUserId))
+            {
+                throw new InvalidOperationException("Customer not found.");
+            }
+
+            if (request.OrderItems == null || request.OrderItems.Count == 0)
+            {
+                throw new InvalidOperationException("Order must contain at least one item.");
+            }
+
+            if (request.OrderItems.Any(item => item.Quantity <= 0))
+            {
+                throw new InvalidOperationException("Quantity must be greater than zero.");
+            }
+
+            if (request.Discount < 0 || request.DeliveryFees < 0)
+            {
+                throw new InvalidOperationException("Discount and delivery fees cannot be negative.");
+            }
+
+            var cartItems = request.OrderItems
+                .GroupBy(item => item.ProductId)
+                .Select(group => new CartItem
+                {
+                    ProductId = group.Key,
+                    Quantity = group.Sum(item => item.Quantity)
+                })
+                .ToList();
+            var lines = await PrepareCheckoutLinesAsync(cartItems);
+            var total = lines.Sum(line => line.CartItem.Quantity * line.Product.Price);
+
+            if (request.Discount > total)
+            {
+                throw new InvalidOperationException("Discount cannot exceed the order total.");
+            }
+
+            var order = new Order
+            {
+                OrderNumber = string.IsNullOrWhiteSpace(request.OrderNumber)
+                    ? $"ORD-{Guid.NewGuid():N}"
+                    : request.OrderNumber,
+                OrderDate = DateTime.UtcNow,
+                Status = OrderStatus.Pending,
+                IsPaid = false,
+                TotalAmount = total,
+                Discount = request.Discount,
+                DeliveryFees = request.DeliveryFees,
+                NetAmount = total - request.Discount + request.DeliveryFees,
+                PaymentMethod = PaymentMethod.Cash,
+                DeliveryAddress = request.DeliveryAddress,
+                Notes = request.Notes,
+                ApplicationUserId = request.ApplicationUserId
+            };
+
+            foreach (var line in lines)
+            {
+                order.OrderItems.Add(CreateAllocatedOrderItem(line));
+            }
+
+            _context.Orders.Add(order);
+            await _context.SaveChangesAsync();
+            await _notificationService.CreateAsync(
+                order.ApplicationUserId,
+                $"A new order {order.OrderNumber} was created for you.",
+                "OrderCreated",
+                order.Id);
+            return order;
+        }
+
+        private async Task<List<CheckoutLine>> PrepareCheckoutLinesAsync(
+            IEnumerable<CartItem> cartItems)
+        {
+            var lines = new List<CheckoutLine>();
+            foreach (var cartItem in cartItems)
+            {
+                var product = await _context.Products
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Id == cartItem.ProductId);
+
+                if (product == null)
+                {
+                    throw new InvalidOperationException($"Product with ID {cartItem.ProductId} was not found.");
+                }
+
+                var batches = await _context.ProductBatches
+                    .Where(batch => batch.ProductId == product.Id
+                        && batch.QuantityOnHand > 0
+                        && batch.ExpiryDate >= DateTime.UtcNow.Date)
+                    .OrderBy(batch => batch.ExpiryDate)
+                    .ToListAsync();
+
+                if (batches.Sum(batch => batch.QuantityOnHand) < cartItem.Quantity)
+                {
+                    throw new InvalidOperationException($"Insufficient stock for product '{product.Name}'.");
+                }
+
+                lines.Add(new CheckoutLine(cartItem, product, batches));
+            }
+
+            return lines;
+        }
+
+        private static OrderItem CreateAllocatedOrderItem(CheckoutLine line)
+        {
+            var orderItem = new OrderItem
+            {
+                ProductId = line.Product.Id,
+                Quantity = line.CartItem.Quantity,
+                UnitPrice = line.Product.Price,
+                TotalPrice = line.CartItem.Quantity * line.Product.Price
+            };
+
+            var quantityRemaining = line.CartItem.Quantity;
+            foreach (var batch in line.Batches)
+            {
+                if (quantityRemaining == 0)
+                {
+                    break;
+                }
+
+                var allocated = Math.Min(batch.QuantityOnHand, quantityRemaining);
+                batch.QuantityOnHand -= allocated;
+                quantityRemaining -= allocated;
+                orderItem.BatchAllocations.Add(new OrderItemBatchAllocation
+                {
+                    ProductBatchId = batch.Id,
+                    Quantity = allocated
+                });
+            }
+
+            return orderItem;
         }
 
         public async Task<Order?> ConfirmArrivalAsync(

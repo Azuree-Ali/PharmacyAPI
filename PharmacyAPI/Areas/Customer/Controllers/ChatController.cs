@@ -8,7 +8,7 @@ using PharmacyAPI.Utils;
 
 namespace PharmacyAPI.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = CD.CUSTOMER_ROLE)]
     [Area(CD.CUSTOMER_AREA)]
     [Route("api/[area]/[controller]")]
     [ApiController]
@@ -111,7 +111,7 @@ namespace PharmacyAPI.Controllers
                 userId
             );
 
-            if (chat == null)
+            if (chat == null || chat.CustomerId != userId)
             {
                 return NotFound(new ApiResponse<object>
                 {
@@ -123,7 +123,8 @@ namespace PharmacyAPI.Controllers
             var message = await _chatService.SendMessageAsync(
                 chatId,
                 userId,
-                request.Message
+                request.Message,
+                isAdmin: false
             );
 
             if (message == null)

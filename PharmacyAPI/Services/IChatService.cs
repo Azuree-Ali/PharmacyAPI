@@ -34,7 +34,8 @@ namespace PharmacyAPI.Services
         Task<ChatMessage?> SendMessageAsync(
             int chatId,
             string senderId,
-            string message);
+            string message,
+            bool isAdmin);
 
         Task MarkMessagesAsReadAsync(
             int chatId,

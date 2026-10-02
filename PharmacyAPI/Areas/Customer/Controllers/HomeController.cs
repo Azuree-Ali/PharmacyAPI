@@ -9,7 +9,7 @@ using PharmacyAPI.Utils;
 
 namespace PharmacyAPI.Areas.Customer.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = CD.CUSTOMER_ROLE)]
     [Area(CD.CUSTOMER_AREA)]
     [Route("api/[area]/[controller]")]
     [ApiController]

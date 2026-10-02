@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using PharmacyAPI.Models;
 using PharmacyAPI.Repositories;
+using PharmacyAPI.Services;
 using PharmacyAPI.Utils;
 
 namespace PharmacyAPI.Areas.Admin.Controllers
@@ -16,16 +16,20 @@ namespace PharmacyAPI.Areas.Admin.Controllers
     {
         private readonly IRepository<Order> _orderRepository;
         private readonly IRepository<OrderItem> _itemRepository;
-        private readonly IRepository<Product> _productRepository;
-        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IOrderWorkflowService _orderWorkflowService;
+        private readonly INotificationService _notificationService;
 
 
-        public OrdersController(IRepository<Order> orderRepository, UserManager<ApplicationUser> userManager, IRepository<Product> productRepository, IRepository<OrderItem> itemRepository)
+        public OrdersController(
+            IRepository<Order> orderRepository,
+            IRepository<OrderItem> itemRepository,
+            IOrderWorkflowService orderWorkflowService,
+            INotificationService notificationService)
         {
             _orderRepository = orderRepository;
-            _userManager = userManager;
-            _productRepository = productRepository;
             _itemRepository = itemRepository;
+            _orderWorkflowService = orderWorkflowService;
+            _notificationService = notificationService;
         }
 
         [HttpGet]
@@ -122,82 +126,19 @@ namespace PharmacyAPI.Areas.Admin.Controllers
         [HttpPost("create")]
         public async Task<IActionResult> Create(CreateOrderRequest request)
         {
-            var user = await _userManager.FindByIdAsync(request.ApplicationUserId);
-
-            if (user == null)
+            Order order;
+            try
             {
-                return NotFound(new ApiResponse<object>
-                {
-                    IsSuccess = false,
-                    Message = "User not found"
-                });
+                order = await _orderWorkflowService.CreateAdminOrderAsync(request);
             }
-
-            if (request.OrderItems == null || !request.OrderItems.Any())
+            catch (InvalidOperationException exception)
             {
                 return BadRequest(new ApiResponse<object>
                 {
                     IsSuccess = false,
-                    Message = "Order must contain at least one item"
+                    Message = exception.Message
                 });
             }
-
-            var order = new Order
-            {
-                OrderNumber = request.OrderNumber,
-                Status = Enums.OrderStatus.Pending,
-                Discount = request.Discount,
-                DeliveryFees = request.DeliveryFees,
-                PaymentMethod = (Enums.PaymentMethod)request.PaymentMethod,
-                DeliveryAddress = request.DeliveryAddress,
-                Notes = request.Notes,
-                ApplicationUserId = request.ApplicationUserId
-            };
-
-            decimal totalAmount = 0;
-
-            foreach (var item in request.OrderItems)
-            {
-                if (item.Quantity <= 0)
-                {
-                    return BadRequest(new ApiResponse<object>
-                    {
-                        IsSuccess = false,
-                        Message = "Quantity must be greater than zero"
-                    });
-                }
-
-                var product = await _productRepository.GetOneAsync(
-                    filter: p => p.Id == item.ProductId
-                );
-
-                if (product == null)
-                {
-                    return NotFound(new ApiResponse<object>
-                    {
-                        IsSuccess = false,
-                        Message = $"Product with ID {item.ProductId} not found"
-                    });
-                }
-
-                var orderItem = new OrderItem
-                {
-                    ProductId = product.Id,
-                    Quantity = item.Quantity,
-                    UnitPrice = product.Price,
-                    TotalPrice = product.Price * item.Quantity
-                };
-
-                order.OrderItems.Add(orderItem);
-
-                totalAmount += orderItem.TotalPrice;
-            }
-
-            order.TotalAmount = totalAmount;
-            order.NetAmount = order.TotalAmount - order.Discount + order.DeliveryFees;
-
-            await _orderRepository.CreateAsync(order);
-            await _orderRepository.CommitAsync();
 
             var response = new OrderDetailsResponse
             {
@@ -252,138 +193,118 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 });
             }
 
-            if (order.PaymentMethod == Enums.PaymentMethod.Cash
-                && !order.IsPaid
-                && request.Status is Enums.OrderStatus.Completed or Enums.OrderStatus.Cancelled)
+            if (!Enum.IsDefined(typeof(Enums.OrderStatus), request.Status))
             {
                 return BadRequest(new ApiResponse<object>
                 {
                     IsSuccess = false,
-                    Message = "Unpaid cash orders must be completed or cancelled through the customer delivery confirmation flow."
+                    Message = "Invalid order status."
                 });
             }
 
-            var user = await _userManager.FindByIdAsync(request.ApplicationUserId);
-
-            if (user == null)
+            if (request.PaymentMethod.HasValue
+                && (!Enum.IsDefined(typeof(Enums.PaymentMethod), request.PaymentMethod.Value)
+                    || request.PaymentMethod.Value != order.PaymentMethod))
             {
-                return NotFound(new ApiResponse<object>
+                return BadRequest(new ApiResponse<object>
                 {
                     IsSuccess = false,
-                    Message = "User not found"
+                    Message = "Payment method cannot be changed after order creation."
                 });
             }
 
-            // Update Order Items
-            if (request.OrderItems != null)
+            if (!string.IsNullOrWhiteSpace(request.ApplicationUserId)
+                && request.ApplicationUserId != order.ApplicationUserId)
             {
-                foreach (var item in request.OrderItems)
+                return BadRequest(new ApiResponse<object>
                 {
-                    if (item.ProductId <= 0)
-                    {
-                        return BadRequest(new ApiResponse<object>
-                        {
-                            IsSuccess = false,
-                            Message = "Invalid ProductId"
-                        });
-                    }
+                    IsSuccess = false,
+                    Message = "An order cannot be reassigned to another customer."
+                });
+            }
 
-                    if (item.Quantity <= 0)
-                    {
-                        return BadRequest(new ApiResponse<object>
-                        {
-                            IsSuccess = false,
-                            Message = "Quantity must be greater than zero"
-                        });
-                    }
+            if (request.Discount < 0 || request.DeliveryFees < 0)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Discount and delivery fees cannot be negative."
+                });
+            }
 
-                    var product = await _productRepository.GetOneAsync(
-                        filter: p => p.Id == item.ProductId
-                    );
+            if (request.OrderItems != null
+                && (request.OrderItems.Count != order.OrderItems.Count
+                    || request.OrderItems.Any(requestItem =>
+                        !order.OrderItems.Any(orderItem =>
+                            orderItem.Id == requestItem.Id
+                            && orderItem.ProductId == requestItem.ProductId
+                            && orderItem.Quantity == requestItem.Quantity))))
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Order items cannot be edited here because their stock allocations must remain accurate. Cancel the order through the delivery flow and create a new order instead."
+                });
+            }
 
-                    if (product == null)
+            if (request.Discount > order.TotalAmount)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Discount cannot exceed the order total."
+                });
+            }
+
+            if (request.Status != order.Status)
+            {
+                if (order.Status is Enums.OrderStatus.Completed or Enums.OrderStatus.Cancelled)
+                {
+                    return Conflict(new ApiResponse<object>
                     {
-                        return NotFound(new ApiResponse<object>
-                        {
-                            IsSuccess = false,
-                            Message = $"Product with ID {item.ProductId} not found"
-                        });
-                    }
+                        IsSuccess = false,
+                        Message = "Completed and cancelled orders cannot be reopened or changed."
+                    });
                 }
 
-                // Delete removed items
-                var postedItemIds = request.OrderItems
-                    .Where(i => i.Id > 0)
-                    .Select(i => i.Id)
-                    .ToList();
-
-                var itemsToDelete = order.OrderItems
-                    .Where(i => !postedItemIds.Contains(i.Id))
-                    .ToList();
-
-                foreach (var item in itemsToDelete)
+                if (request.Status == Enums.OrderStatus.Cancelled)
                 {
-                    _itemRepository.Delete(item);
+                    return BadRequest(new ApiResponse<object>
+                    {
+                        IsSuccess = false,
+                        Message = "Cancel orders through the customer delivery confirmation flow so reserved stock is restored."
+                    });
                 }
 
-                // Update existing items and add new ones
-                foreach (var item in request.OrderItems)
+                if ((request.Status is Enums.OrderStatus.Processing or Enums.OrderStatus.Completed)
+                    && !order.IsPaid)
                 {
-                    var existingItem = order.OrderItems
-                        .FirstOrDefault(i => i.Id == item.Id);
-
-                    var product = await _productRepository.GetOneAsync(
-                        filter: p => p.Id == item.ProductId
-                    );
-
-                    if (existingItem != null)
+                    return BadRequest(new ApiResponse<object>
                     {
-                        existingItem.ProductId = product!.Id;
-                        existingItem.Quantity = item.Quantity;
-                        existingItem.UnitPrice = product.Price;
-                        existingItem.TotalPrice = product.Price * item.Quantity;
-                    }
-                    else
-                    {
-                        var newItem = new OrderItem
-                        {
-                            OrderId = order.Id,
-                            ProductId = product!.Id,
-                            Quantity = item.Quantity,
-                            UnitPrice = product.Price,
-                            TotalPrice = product.Price * item.Quantity
-                        };
-
-                        await _itemRepository.CreateAsync(newItem);
-                    }
+                        IsSuccess = false,
+                        Message = "An unpaid order cannot be moved to processing or completed."
+                    });
                 }
             }
 
-            // Update Order information
-            order.ApplicationUserId = request.ApplicationUserId;
+            var statusChanged = order.Status != request.Status;
             order.Status = request.Status;
             order.Discount = request.Discount;
             order.DeliveryFees = request.DeliveryFees;
-            order.PaymentMethod = (Enums.PaymentMethod)request.PaymentMethod;
             order.DeliveryAddress = request.DeliveryAddress;
-            // Get updated items to calculate totals
-            var updatedOrder = await _orderRepository.GetOneAsync(
-                filter: o => o.Id == id,
-                includes:
-                [
-                    o => o.OrderItems
-                ]
-            );
-
-            var totalAmount = updatedOrder!.OrderItems
-                .Sum(i => i.Quantity * i.UnitPrice);
-
-            order.TotalAmount = totalAmount;
-            order.NetAmount = order.TotalAmount
-                              - order.Discount
-                              + order.DeliveryFees;
+            order.TotalAmount = order.OrderItems.Sum(item => item.TotalPrice);
+            order.NetAmount = order.TotalAmount - order.Discount + order.DeliveryFees;
 
             await _orderRepository.CommitAsync();
+
+            if (statusChanged)
+            {
+                await _notificationService.CreateAsync(
+                    order.ApplicationUserId,
+                    $"Your order {order.OrderNumber} status changed to {order.Status}.",
+                    "OrderStatus",
+                    order.Id);
+            }
 
             var response = new OrderDetailsResponse
             {
@@ -401,7 +322,7 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 Notes = order.Notes,
                 ApplicationUserId = order.ApplicationUserId,
 
-                OrderItems = updatedOrder.OrderItems
+                OrderItems = order.OrderItems
                     .Select(item => new OrderItemResponse
                     {
                         Id = item.Id,
@@ -449,6 +370,15 @@ namespace PharmacyAPI.Areas.Admin.Controllers
                 {
                     IsSuccess = false,
                     Message = "Cancel this cash order through the customer delivery flow before deleting it so reserved inventory can be restored."
+                });
+            }
+
+            if (order.Status is Enums.OrderStatus.Processing or Enums.OrderStatus.Completed)
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Processing and completed order records cannot be deleted. Preserve them for order history and audit."
                 });
             }
             // Delete order items

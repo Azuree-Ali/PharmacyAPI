@@ -160,7 +160,8 @@ namespace PharmacyAPI.Services
         public async Task<ChatMessage?> SendMessageAsync(
             int chatId,
             string senderId,
-            string message)
+            string message,
+            bool isAdmin)
         {
             if (string.IsNullOrWhiteSpace(message))
             {
@@ -168,14 +169,10 @@ namespace PharmacyAPI.Services
             }
 
             var chat = await _chatRepository.GetOneAsync(
-                filter: c =>
-                    c.Id == chatId &&
-                    (
-                        c.CustomerId == senderId ||
-                        c.AdminId == senderId ||
-                        c.AdminId == null
-                    )
-            );
+                filter: c => c.Id == chatId &&
+                    (isAdmin
+                        ? c.AdminId == senderId || c.AdminId == null
+                        : c.CustomerId == senderId));
 
             if (chat == null)
             {
@@ -184,8 +181,7 @@ namespace PharmacyAPI.Services
 
             // If an admin sends the first message,
             // assign the chat to that admin.
-            if (chat.AdminId == null &&
-                chat.CustomerId != senderId)
+            if (isAdmin && chat.AdminId == null)
             {
                 chat.AdminId = senderId;
 

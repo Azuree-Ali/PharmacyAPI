@@ -57,13 +57,7 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         public async Task<IActionResult> UpdateProfile(ApplicationUserRequest applicationUserRequest)
         {
             var user = await _usermanager.GetUserAsync(User);
-            user.FirstName = applicationUserRequest.FirstName;
-            user.LastName = applicationUserRequest.LastName;
-            user.PhoneNumber = applicationUserRequest.PhoneNumber;
-            user.Address = applicationUserRequest.Adresse;
-            user.Email = applicationUserRequest.Email;
-            var result = await _usermanager.UpdateAsync(user);
-            if(user == null)
+            if (user == null)
             {
                 return NotFound(new ApiResponse<object>()
                 {
@@ -72,6 +66,13 @@ namespace PharmacyAPI.Areas.Identity.Controllers
                     Error = "User not found"
                 });
             }
+
+            user.FirstName = applicationUserRequest.FirstName;
+            user.LastName = applicationUserRequest.LastName;
+            user.PhoneNumber = applicationUserRequest.PhoneNumber;
+            user.Address = applicationUserRequest.Adresse;
+            user.Email = applicationUserRequest.Email;
+            var result = await _usermanager.UpdateAsync(user);
             if (!result.Succeeded)
             {
                 return BadRequest(new ApiResponse<object>()
@@ -98,6 +99,16 @@ namespace PharmacyAPI.Areas.Identity.Controllers
         public async Task<IActionResult> UpdatePassword(UpdatePasswordRequest updatePasswordRequest)
         {
             var user = await _usermanager.GetUserAsync(User);
+            if (user == null)
+            {
+                return NotFound(new ApiResponse<object>()
+                {
+                    IsSuccess = false,
+                    Message = "User not found",
+                    Error = "User not found"
+                });
+            }
+
             var result = await _usermanager.ChangePasswordAsync(user, updatePasswordRequest.CurrentPassword, updatePasswordRequest.NewPassword);
             if (!result.Succeeded)
             {

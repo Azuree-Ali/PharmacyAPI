@@ -31,7 +31,7 @@ namespace PharmacyAPI.Services
                 Type = type,
                 OrderId = orderId,
                 IsRead = false,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             await _repository.CreateAsync(notification);

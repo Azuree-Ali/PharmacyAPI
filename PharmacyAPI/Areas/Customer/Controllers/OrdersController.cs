@@ -25,6 +25,101 @@ namespace PharmacyAPI.Areas.Customer.Controllers
             _userManager = userManager;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetOrderHistory()
+        {
+            var customerId = _userManager.GetUserId(User);
+            if (customerId == null)
+            {
+                return Unauthorized(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "User is not authenticated."
+                });
+            }
+
+            var orders = await _orderWorkflowService.GetCustomerOrderHistoryAsync(customerId);
+            var response = orders.Select(order => new OrderResponse
+            {
+                Id = order.Id,
+                OrderNumber = order.OrderNumber,
+                OrderDate = order.OrderDate,
+                Status = order.Status,
+                IsPaid = order.IsPaid,
+                TotalAmount = order.TotalAmount,
+                Discount = order.Discount,
+                DeliveryFees = order.DeliveryFees,
+                NetAmount = order.NetAmount,
+                PaymentMethod = order.PaymentMethod,
+                DeliveryAddress = order.DeliveryAddress,
+                Notes = order.Notes
+            }).ToList();
+
+            return Ok(new ApiResponse<List<OrderResponse>>
+            {
+                IsSuccess = true,
+                Message = "Order history retrieved successfully.",
+                Data = response
+            });
+        }
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetOrderDetails(int id)
+        {
+            var customerId = _userManager.GetUserId(User);
+            if (customerId == null)
+            {
+                return Unauthorized(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "User is not authenticated."
+                });
+            }
+
+            var order = await _orderWorkflowService.GetCustomerOrderDetailsAsync(customerId, id);
+            if (order == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    IsSuccess = false,
+                    Message = "Order not found."
+                });
+            }
+
+            var response = new OrderDetailsResponse
+            {
+                Id = order.Id,
+                OrderNumber = order.OrderNumber,
+                OrderDate = order.OrderDate,
+                DeliveryConfirmationRequestedAt = order.DeliveryConfirmationRequestedAt,
+                Status = order.Status,
+                IsPaid = order.IsPaid,
+                TotalAmount = order.TotalAmount,
+                Discount = order.Discount,
+                DeliveryFees = order.DeliveryFees,
+                NetAmount = order.NetAmount,
+                PaymentMethod = order.PaymentMethod,
+                DeliveryAddress = order.DeliveryAddress,
+                Notes = order.Notes,
+                OrderItems = order.OrderItems.Select(item => new OrderItemResponse
+                {
+                    Id = item.Id,
+                    ProductId = item.ProductId,
+                    ProductName = item.Product?.Name,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    TotalPrice = item.TotalPrice
+                }).ToList()
+            };
+
+            return Ok(new ApiResponse<OrderDetailsResponse>
+            {
+                IsSuccess = true,
+                Message = "Order details retrieved successfully.",
+                Data = response
+            });
+        }
+
         [HttpPost("{id:int}/arrived")]
         public async Task<IActionResult> ConfirmArrival(int id)
         {

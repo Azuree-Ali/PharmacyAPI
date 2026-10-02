@@ -13,14 +13,18 @@ namespace PharmacyAPI.Hubs
         private readonly IChatService _chatService;
         private readonly INotificationService _notificationService;
         private readonly IOrderWorkflowService _orderWorkflowService;
-        UserManager<ApplicationUser> _userManager;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ChatHub(IChatService chatService, INotificationService notificationService, IOrderWorkflowService orderWorkflowService, UserManager<ApplicationUser> userManager)
+        public ChatHub(
+            IChatService chatService,
+            INotificationService notificationService,
+            IOrderWorkflowService orderWorkflowService,
+            UserManager<ApplicationUser> userManager)
         {
             _chatService = chatService;
             _notificationService = notificationService;
             _orderWorkflowService = orderWorkflowService;
-            this._userManager = userManager;
+            _userManager = userManager;
         }
 
         public async Task JoinChat(int chatId)
@@ -35,6 +39,10 @@ namespace PharmacyAPI.Hubs
             }
 
             var isAdmin = IsAdmin();
+            if (!isAdmin && !IsCustomer())
+            {
+                throw new HubException("Only customers and support staff can access chats.");
+            }
 
             Chat? chat;
 
@@ -53,7 +61,7 @@ namespace PharmacyAPI.Hubs
                 );
             }
 
-            if (chat == null)
+            if (chat == null || (!isAdmin && chat.CustomerId != userId))
             {
                 throw new HubException(
                     "You are not allowed to access this chat."
@@ -87,36 +95,38 @@ namespace PharmacyAPI.Hubs
                 );
             }
 
+            if (!IsAdmin() && !IsCustomer())
+            {
+                throw new HubException("Only customers and support staff can send chat messages.");
+            }
+
             if (string.IsNullOrWhiteSpace(message))
             {
                 return;
             }
 
-            var chatMessage =
-                await _chatService.SendMessageAsync(
-                    chatId,
-                    userId,
-                    message
-                );
+            var isAdmin = IsAdmin();
+            var chat = await _chatService.GetChatForUserAsync(
+                chatId,
+                userId,
+                isAdmin);
+
+            if (chat == null || (!isAdmin && chat.CustomerId != userId))
+            {
+                throw new HubException(
+                    "You are not allowed to access this chat.");
+            }
+
+            var chatMessage = await _chatService.SendMessageAsync(
+                chatId,
+                userId,
+                message,
+                isAdmin);
 
             if (chatMessage == null)
             {
                 throw new HubException(
                     "Unable to send message."
-                );
-            }
-
-            // Get the chat
-            var chat = await _chatService.GetChatForUserAsync(
-     chatId,
-     userId,
-     IsAdmin()
- );
-
-            if (chat == null)
-            {
-                throw new HubException(
-                    "You are not allowed to access this chat."
                 );
             }
 
@@ -211,6 +221,11 @@ namespace PharmacyAPI.Hubs
                 );
             }
 
+            if (!IsAdmin() && !IsCustomer())
+            {
+                throw new HubException("Only customers and support staff can access chats.");
+            }
+
             await _chatService.MarkMessagesAsReadAsync(
                 chatId,
                 userId
@@ -241,6 +256,9 @@ namespace PharmacyAPI.Hubs
                 ||
                 Context.User?.IsInRole(CD.PHARMACIST_ROLE) == true;
         }
+
+        private bool IsCustomer() =>
+            Context.User?.IsInRole(CD.CUSTOMER_ROLE) == true;
 
     }
 }
